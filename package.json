@@ -1,0 +1,31 @@
+{
+  "name": "skillmatch",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -k \"npm:server:dev\" \"npm:vite:dev\"",
+    "server:dev": "node --watch server/index.js",
+    "vite:dev": "vite",
+    "start": "node server/index.js",
+    "build": "vite build",
+    "format": "prettier --write index.html README.md package.json package-lock.json vite.config.js src server",
+    "format:check": "prettier --check index.html README.md package.json package-lock.json vite.config.js src server",
+    "test": "vitest run server/index.test.js --pool forks --maxWorkers 1"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "latest",
+    "express": "^5.3.0",
+    "lucide-react": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "react-router-dom": "latest",
+    "recharts": "latest",
+    "vite": "latest"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.6",
+    "prettier": "^3.9.9",
+    "vitest": "latest"
+  }
+}
