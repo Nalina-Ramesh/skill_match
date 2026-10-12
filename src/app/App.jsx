@@ -53,6 +53,10 @@ export default function App() {
     [mobile, setMobile] = useState(false);
   const loc = useLocation(),
     nav = useNavigate();
+  const visibleLinks =
+    state.role === "Manager"
+      ? links
+      : [["/my-workspace", "My workspace", Users]];
   if (authLoading) {
     return <div className="auth-loading">Opening your workspace…</div>;
   }
@@ -105,7 +109,7 @@ export default function App() {
         </div>
         <div className="workspace-label">WORKSPACE</div>
         <nav>
-          {links.map(([path, label, Icon]) => (
+          {visibleLinks.map(([path, label, Icon]) => (
             <NavLink
               key={path}
               to={path}
@@ -176,11 +180,11 @@ export default function App() {
           <Routes>
             <Route
               path="/login"
-              element={<Navigate to="/dashboard" replace />}
+              element={<Navigate to="/" replace />}
             />
             <Route
               path="/signup"
-              element={<Navigate to="/dashboard" replace />}
+              element={<Navigate to="/" replace />}
             />
             <Route
               path="/"

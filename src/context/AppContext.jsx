@@ -108,22 +108,27 @@ export function AppProvider({ children }) {
 
   const acceptSession = ({ user: signedInUser, workspace }) => {
     setUser(signedInUser);
-    setState(workspace);
+    setState({
+      ...workspace,
+      role: signedInUser.accountRole,
+      selectedEmployeeId:
+        signedInUser.employeeId ?? workspace.selectedEmployeeId,
+    });
     setWorkspaceReady(true);
   };
 
-  const signUp = async (name, email, password) => {
+  const signUp = async (name, email, password, accountRole, managerEmail) => {
     const result = await api("/auth/signup", {
       method: "POST",
-      body: JSON.stringify({ name, email, password }),
+      body: JSON.stringify({ name, email, password, accountRole, managerEmail }),
     });
     acceptSession(result);
   };
 
-  const signIn = async (email, password) => {
+  const signIn = async (email, password, accountRole) => {
     const result = await api("/auth/login", {
       method: "POST",
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, accountRole }),
     });
     acceptSession(result);
   };

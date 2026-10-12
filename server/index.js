@@ -16,6 +16,7 @@ const sessionCookie = "skillmatch_session";
 const sessionDuration = 7 * 24 * 60 * 60 * 1000;
 const dummySalt = "skillmatch-invalid-login-salt";
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const skillLevels = new Set(["Beginner", "Intermediate", "Advanced", "Expert"]);
 
 export function emptyWorkspace() {
   return {
@@ -41,7 +42,14 @@ function readStore(filePath) {
     return store;
   }
 
-  const store = JSON.parse(readFileSync(filePath, "utf8"));
+  const contents = readFileSync(filePath, "utf8");
+  if (!contents.trim()) {
+    const store = emptyStore();
+    writeStore(filePath, store);
+    return store;
+  }
+
+  const store = JSON.parse(contents);
   if (
     !Array.isArray(store.users) ||
     !Array.isArray(store.sessions) ||
@@ -69,7 +77,13 @@ async function hashPassword(password, salt) {
 }
 
 function safeUser(user) {
-  return { id: user.id, name: user.name, email: user.email };
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    accountRole: user.accountRole === "Employee" ? "Employee" : "Manager",
+    employeeId: user.accountRole === "Employee" ? user.employeeId : null,
+  };
 }
 
 function readCookie(request) {
@@ -153,6 +167,46 @@ function normalizeWorkspace(value) {
   };
 }
 
+function workspaceForUser(store, user) {
+  const workspace = store.workspaces[user.id] ?? emptyWorkspace();
+  if (user.accountRole !== "Employee") return workspace;
+
+  const managerWorkspace = store.workspaces[user.managerId];
+  const employee = managerWorkspace?.employees.find(
+    (item) => item.id === user.employeeId,
+  );
+  if (!employee) return { ...emptyWorkspace(), role: "Employee" };
+
+  const assignments = managerWorkspace.assignments.filter(
+    (item) => item.employeeId === employee.id,
+  );
+  const projectIds = new Set(assignments.map((item) => item.projectId));
+  return {
+    ...emptyWorkspace(),
+    role: "Employee",
+    selectedEmployeeId: employee.id,
+    employees: [employee],
+    projects: managerWorkspace.projects.filter((item) =>
+      projectIds.has(item.id),
+    ),
+    assignments,
+    history: managerWorkspace.history.filter(
+      (item) => item.employeeId === employee.id,
+    ),
+  };
+}
+
+function normalizeSkills(value) {
+  if (!Array.isArray(value) || value.length > 100) return null;
+  const skills = [];
+  for (const skill of value) {
+    const name = typeof skill?.name === "string" ? skill.name.trim() : "";
+    if (!name || name.length > 80 || !skillLevels.has(skill.level)) return null;
+    skills.push({ name, level: skill.level });
+  }
+  return skills;
+}
+
 export function createApp({
   storePath = process.env.SKILLMATCH_DATA_FILE ||
     path.resolve(process.cwd(), "data", "skillmatch.json"),
@@ -196,6 +250,11 @@ export function createApp({
         .trim()
         .toLowerCase();
       const password = String(request.body?.password ?? "");
+      const accountRole =
+        request.body?.accountRole === "Employee" ? "Employee" : "Manager";
+      const managerEmail = String(request.body?.managerEmail ?? "")
+        .trim()
+        .toLowerCase();
 
       if (!name || name.length > 100) {
         response.status(400).json({ error: "Enter your name." });
@@ -220,20 +279,49 @@ export function createApp({
         return;
       }
 
+      let manager;
+      let employee;
+      if (accountRole === "Employee") {
+        manager = store.users.find(
+          (user) =>
+            user.email === managerEmail &&
+            (user.accountRole ?? "Manager") === "Manager",
+        );
+        const managerWorkspace = manager && store.workspaces[manager.id];
+        employee = managerWorkspace?.employees.find(
+          (item) =>
+            String(item.email ?? "")
+              .trim()
+              .toLowerCase() === email,
+        );
+        if (!manager || !employee) {
+          response.status(400).json({
+            error:
+              "Ask your manager to add your work email to their employee directory first.",
+          });
+          return;
+        }
+      }
+
       const user = {
         id: randomBytes(16).toString("hex"),
         name,
         email,
+        accountRole,
+        ...(accountRole === "Employee"
+          ? { managerId: manager.id, employeeId: employee.id }
+          : {}),
         salt: randomBytes(16).toString("hex"),
         createdAt: new Date().toISOString(),
       };
       user.passwordHash = await hashPassword(password, user.salt);
       store.users.push(user);
-      store.workspaces[user.id] = emptyWorkspace();
+      if (accountRole === "Manager")
+        store.workspaces[user.id] = emptyWorkspace();
       createSession(store, user.id, response, storePath);
       response.status(201).json({
         user: safeUser(user),
-        workspace: store.workspaces[user.id],
+        workspace: workspaceForUser(store, user),
       });
     } catch (error) {
       next(error);
@@ -246,6 +334,7 @@ export function createApp({
         .trim()
         .toLowerCase();
       const password = String(request.body?.password ?? "");
+      const requestedRole = request.body?.accountRole;
       const store = readStore(storePath);
       const user = store.users.find((item) => item.email === email);
       const salt = user?.salt ?? dummySalt;
@@ -258,7 +347,11 @@ export function createApp({
         expectedHash.length === 64 &&
         timingSafeEqual(Buffer.from(actualHash, "hex"), expectedHash);
 
-      if (!user || !valid) {
+      if (
+        !user ||
+        !valid ||
+        (requestedRole && requestedRole !== (user.accountRole ?? "Manager"))
+      ) {
         response.status(401).json({ error: "Email or password is incorrect." });
         return;
       }
@@ -266,7 +359,7 @@ export function createApp({
       createSession(store, user.id, response, storePath);
       response.json({
         user: safeUser(user),
-        workspace: store.workspaces[user.id] ?? emptyWorkspace(),
+        workspace: workspaceForUser(store, user),
       });
     } catch (error) {
       next(error);
@@ -310,7 +403,7 @@ export function createApp({
       }
       response.json({
         user: safeUser(user),
-        workspace: store.workspaces[user.id] ?? emptyWorkspace(),
+        workspace: workspaceForUser(store, user),
       });
     } catch (error) {
       next(error);
@@ -320,7 +413,7 @@ export function createApp({
   app.get("/api/workspace", requireAuth, (request, response, next) => {
     try {
       const store = readStore(storePath);
-      response.json(store.workspaces[request.authUser.id] ?? emptyWorkspace());
+      response.json(workspaceForUser(store, request.authUser));
     } catch (error) {
       next(error);
     }
@@ -334,7 +427,26 @@ export function createApp({
         return;
       }
       const store = readStore(storePath);
-      store.workspaces[request.authUser.id] = workspace;
+      if (request.authUser.accountRole === "Employee") {
+        const managerWorkspace = store.workspaces[request.authUser.managerId];
+        const employee = managerWorkspace?.employees.find(
+          (item) => item.id === request.authUser.employeeId,
+        );
+        const submittedEmployee = workspace.employees.find(
+          (item) => item.id === request.authUser.employeeId,
+        );
+        const skills = normalizeSkills(submittedEmployee?.skills);
+        if (!employee || !submittedEmployee || !skills) {
+          response
+            .status(403)
+            .json({ error: "Your employee profile cannot be updated." });
+          return;
+        }
+        employee.skills = skills;
+        employee.updatedAt = new Date().toISOString();
+      } else {
+        store.workspaces[request.authUser.id] = workspace;
+      }
       writeStore(storePath, store);
       response.json({ ok: true });
     } catch (error) {

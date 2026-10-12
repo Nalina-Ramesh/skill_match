@@ -10,6 +10,8 @@ export default function AuthPage({ mode }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [accountRole, setAccountRole] = useState("Manager");
+  const [managerEmail, setManagerEmail] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -18,9 +20,12 @@ export default function AuthPage({ mode }) {
     setSubmitting(true);
     setError("");
     try {
-      if (isSignup) await signUp(name, email, password);
-      else await signIn(email, password);
-      navigate("/dashboard", { replace: true });
+      if (isSignup)
+        await signUp(name, email, password, accountRole, managerEmail);
+      else await signIn(email, password, accountRole);
+      navigate(accountRole === "Employee" ? "/my-workspace" : "/dashboard", {
+        replace: true,
+      });
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -65,8 +70,10 @@ export default function AuthPage({ mode }) {
             </h2>
             <p className="auth-intro">
               {isSignup
-                ? "Set up your account to create a private workspace."
-                : "Use your account details to open your workspace."}
+                ? accountRole === "Employee"
+                  ? "Join your team with the manager email used for your employee directory record."
+                  : "Create a manager account to build a team and assign project work."
+                : "Use your account details and account type to open your workspace."}
             </p>
 
             <form className="auth-form" onSubmit={submit}>
@@ -81,6 +88,36 @@ export default function AuthPage({ mode }) {
                       value={name}
                       onChange={(event) => setName(event.target.value)}
                       placeholder="Your name"
+                      required
+                    />
+                  </span>
+                </label>
+              )}
+              <label>
+                {isSignup ? "Account type" : "Sign in as"}
+                <span className="auth-input-wrap">
+                  <BriefcaseBusiness size={17} />
+                  <select
+                    value={accountRole}
+                    onChange={(event) => setAccountRole(event.target.value)}
+                  >
+                    <option value="Manager">Manager</option>
+                    <option value="Employee">Employee</option>
+                  </select>
+                </span>
+              </label>
+              {isSignup && accountRole === "Employee" && (
+                <label>
+                  Manager email address
+                  <span className="auth-input-wrap">
+                    <Mail size={17} />
+                    <input
+                      type="email"
+                      autoComplete="email"
+                      maxLength={254}
+                      value={managerEmail}
+                      onChange={(event) => setManagerEmail(event.target.value)}
+                      placeholder="manager@company.com"
                       required
                     />
                   </span>

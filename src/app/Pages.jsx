@@ -2079,7 +2079,7 @@ export function Workspace() {
       <>
         <PageHead
           title="Employee workspace"
-          sub="Select an employee to view their workspace."
+          sub="Your profile and current allocations."
         />
       </>
     );
@@ -2091,18 +2091,8 @@ export function Workspace() {
     <>
       <PageHead
         title={`Welcome, ${employee.name.split(" ")[0]}`}
-        sub="Your personal workspace · Employee demo view"
+        sub="Your personal workspace"
       />
-      <div className="notice">
-        <span>i</span>
-        <div>
-          <b>Employee view</b>
-          <small>
-            This is a frontend demo role. Switching views does not create an
-            authenticated security boundary.
-          </small>
-        </div>
-      </div>
       <div className="profile-grid workspace-grid">
         <section className="panel profile-intro">
           <span className="profile-avatar">{initials(employee.name)}</span>
@@ -2136,9 +2126,6 @@ export function Workspace() {
               <h3>Your skills</h3>
               <p>Add skills or update proficiency levels for your profile.</p>
             </div>
-            <Link className="text-btn" to={`/employees/${employee.id}`}>
-              View profile
-            </Link>
           </div>
           <SkillQuickEdit employee={employee} />
         </section>
@@ -2154,9 +2141,7 @@ export function Workspace() {
               const p = state.projects.find((x) => x.id === a.projectId);
               return (
                 <div className="assignment-line" key={a.id}>
-                  <Link to={`/projects/${a.projectId}`}>
-                    {p?.name || "Project"}
-                  </Link>
+                  <span>{p?.name || "Project"}</span>
                   <span>{a.commitment}% commitment</span>
                 </div>
               );

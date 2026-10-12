@@ -1479,6 +1479,15 @@ td small {
   background: transparent;
   font-size: 12px;
 }
+.auth-input-wrap select {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  color: #21342b;
+  background: transparent;
+  font-size: 12px;
+}
 .auth-input-wrap input:focus-visible {
   outline: 0;
 }
