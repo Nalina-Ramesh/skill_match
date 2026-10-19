@@ -180,15 +180,12 @@ function workspaceForUser(store, user) {
   const assignments = managerWorkspace.assignments.filter(
     (item) => item.employeeId === employee.id,
   );
-  const projectIds = new Set(assignments.map((item) => item.projectId));
   return {
     ...emptyWorkspace(),
     role: "Employee",
     selectedEmployeeId: employee.id,
     employees: [employee],
-    projects: managerWorkspace.projects.filter((item) =>
-      projectIds.has(item.id),
-    ),
+    projects: managerWorkspace.projects,
     assignments,
     history: managerWorkspace.history.filter(
       (item) => item.employeeId === employee.id,
@@ -418,6 +415,134 @@ export function createApp({
       next(error);
     }
   });
+
+  app.post(
+    "/api/employees/:employeeId/certificates",
+    requireAuth,
+    express.raw({ type: "application/octet-stream", limit: "5mb" }),
+    (request, response, next) => {
+      try {
+        const store = readStore(storePath);
+        const user = request.authUser;
+        const workspace =
+          user.accountRole === "Employee"
+            ? store.workspaces[user.managerId]
+            : store.workspaces[user.id];
+        const employee = workspace?.employees.find(
+          (item) => item.id === request.params.employeeId,
+        );
+        if (
+          !employee ||
+          (user.accountRole === "Employee" && user.employeeId !== employee.id)
+        ) {
+          response.status(404).json({ error: "Employee profile not found." });
+          return;
+        }
+
+        const contentType = request.get("x-certificate-type");
+        const file = request.body;
+        const validFile =
+          Buffer.isBuffer(file) &&
+          ((contentType === "application/pdf" &&
+            file.subarray(0, 5).toString() === "%PDF-") ||
+            (contentType === "image/png" &&
+              file
+                .subarray(0, 8)
+                .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) ||
+            (contentType === "image/jpeg" &&
+              file.length >= 3 &&
+              file[0] === 255 &&
+              file[1] === 216 &&
+              file[2] === 255));
+        const originalName = String(request.get("x-certificate-name") ?? "");
+        const skill = String(request.get("x-certificate-skill") ?? "").trim();
+        const name = path
+          .basename(originalName.replaceAll("\\", "/"))
+          .replace(/[\u0000-\u001f\u007f]/g, "")
+          .trim();
+        if (
+          !validFile ||
+          !name ||
+          name.length > 180 ||
+          !skill ||
+          skill.length > 80 ||
+          !employee.skills?.some(
+            (item) =>
+              item.name.toLocaleLowerCase() === skill.toLocaleLowerCase(),
+          )
+        ) {
+          response.status(400).json({
+            error:
+              "Choose a listed skill and upload a valid PDF, PNG, or JPEG certificate (up to 5 MB).",
+          });
+          return;
+        }
+
+        const certificate = {
+          id: randomBytes(16).toString("hex"),
+          name,
+          type: contentType,
+          skill,
+          uploadedAt: new Date().toISOString(),
+        };
+        const certificateDirectory = `${storePath}.certificates`;
+        mkdirSync(certificateDirectory, { recursive: true });
+        writeFileSync(path.join(certificateDirectory, certificate.id), file, {
+          mode: 0o600,
+        });
+        employee.certificates = [...(employee.certificates ?? []), certificate];
+        employee.updatedAt = new Date().toISOString();
+        writeStore(storePath, store);
+        response.status(201).json({ certificate });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  app.get(
+    "/api/employees/:employeeId/certificates/:certificateId",
+    requireAuth,
+    (request, response, next) => {
+      try {
+        const store = readStore(storePath);
+        const user = request.authUser;
+        const workspace =
+          user.accountRole === "Employee"
+            ? store.workspaces[user.managerId]
+            : store.workspaces[user.id];
+        const employee = workspace?.employees.find(
+          (item) => item.id === request.params.employeeId,
+        );
+        if (
+          !employee ||
+          (user.accountRole === "Employee" && user.employeeId !== employee.id)
+        ) {
+          response.status(404).json({ error: "Certificate not found." });
+          return;
+        }
+        const certificate = (employee.certificates ?? []).find(
+          (item) => item.id === request.params.certificateId,
+        );
+        if (!certificate) {
+          response.status(404).json({ error: "Certificate not found." });
+          return;
+        }
+        const certificatePath = path.join(
+          `${storePath}.certificates`,
+          certificate.id,
+        );
+        response.type(certificate.type);
+        response.set(
+          "Content-Disposition",
+          `attachment; filename*=UTF-8''${encodeURIComponent(certificate.name)}`,
+        );
+        response.send(readFileSync(certificatePath));
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
 
   app.put("/api/workspace", requireAuth, (request, response, next) => {
     try {

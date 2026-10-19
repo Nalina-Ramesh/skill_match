@@ -22,6 +22,7 @@ import {
   Plus,
   Search,
   SlidersHorizontal,
+  Upload,
   Users,
   X,
 } from "lucide-react";
@@ -88,6 +89,29 @@ function Empty({
       <b>{title}</b>
       <span>{text}</span>
     </div>
+  );
+}
+function CertificateList({ employee }) {
+  const certificates = employee.certificates ?? [];
+  return certificates.length ? (
+    <div className="certificate-list">
+      {certificates.map((certificate) => (
+        <a
+          className="certificate-row"
+          href={`/api/employees/${encodeURIComponent(employee.id)}/certificates/${encodeURIComponent(certificate.id)}`}
+          key={certificate.id}
+        >
+          <span>
+            {certificate.name}
+            <small>{certificate.skill || "Uncategorized"}</small>
+          </span>
+          <small>{new Date(certificate.uploadedAt).toLocaleDateString()}</small>
+          <Download size={15} aria-label="Download certificate" />
+        </a>
+      ))}
+    </div>
+  ) : (
+    <Empty title="No certificates uploaded" />
   );
 }
 function Modal({ title, onClose, children }) {
@@ -1124,6 +1148,15 @@ export function EmployeeProfile() {
         <section className="panel">
           <div className="panel-head">
             <div>
+              <h3>Certificates</h3>
+              <p>Evidence submitted for skill evaluation</p>
+            </div>
+          </div>
+          <CertificateList employee={e} />
+        </section>
+        <section className="panel">
+          <div className="panel-head">
+            <div>
               <h3>Current projects</h3>
               <p>{active.length} active allocations</p>
             </div>
@@ -2004,7 +2037,7 @@ function SkillQuickEdit({ employee }) {
   return (
     <div className="skill-quick-edit">
       <form
-        className="inline-form"
+        className="inline-form skill-add-form"
         onSubmit={(e) => {
           e.preventDefault();
           const normalized = name.trim().toLowerCase();
@@ -2070,7 +2103,10 @@ function SkillQuickEdit({ employee }) {
   );
 }
 export function Workspace() {
-  const { state, setState } = useApp();
+  const { state, uploadCertificate, notify } = useApp();
+  const [certificateFile, setCertificateFile] = useState(null);
+  const [certificateSkill, setCertificateSkill] = useState("");
+  const [uploading, setUploading] = useState(false);
   const employee = state.employees.find(
     (e) => e.id === state.selectedEmployeeId,
   );
@@ -2087,6 +2123,22 @@ export function Workspace() {
     projects = state.assignments.filter(
       (a) => a.employeeId === employee.id && a.status === "Active",
     );
+  const upload = async (event) => {
+    event.preventDefault();
+    const skill = certificateSkill || employee.skills?.[0]?.name;
+    if (!certificateFile || !skill) return;
+    const form = event.currentTarget;
+    setUploading(true);
+    try {
+      await uploadCertificate(employee.id, certificateFile, skill);
+      setCertificateFile(null);
+      form.reset();
+    } catch (error) {
+      notify(error.message);
+    } finally {
+      setUploading(false);
+    }
+  };
   return (
     <>
       <PageHead
@@ -2128,6 +2180,54 @@ export function Workspace() {
             </div>
           </div>
           <SkillQuickEdit employee={employee} />
+        </section>
+        <section className="panel">
+          <div className="panel-head">
+            <div>
+              <h3>Your certificates</h3>
+              <p>Upload evidence for your skills to support evaluation.</p>
+            </div>
+          </div>
+          <form className="certificate-upload" onSubmit={upload}>
+            <select
+              aria-label="Certificate skill"
+              disabled={!employee.skills?.length}
+              onChange={(event) => setCertificateSkill(event.target.value)}
+              required
+              value={certificateSkill || employee.skills?.[0]?.name || ""}
+            >
+              {(employee.skills ?? []).map((skill) => (
+                <option key={skill.name} value={skill.name}>
+                  {skill.name}
+                </option>
+              ))}
+            </select>
+            <input
+              aria-label="Choose a certificate file"
+              accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"
+              onChange={(event) =>
+                setCertificateFile(event.target.files?.[0] ?? null)
+              }
+              required
+              type="file"
+            />
+            <button
+              className="btn btn-light"
+              disabled={
+                !certificateFile || !employee.skills?.length || uploading
+              }
+              type="submit"
+            >
+              <Upload size={15} />{" "}
+              {uploading ? "Uploading…" : "Upload certificate"}
+            </button>
+          </form>
+          {!employee.skills?.length && (
+            <p className="certificate-hint">
+              Add a skill to your profile before uploading supporting evidence.
+            </p>
+          )}
+          <CertificateList employee={employee} />
         </section>
         <section className="panel">
           <div className="panel-head">
@@ -2174,6 +2274,171 @@ export function Workspace() {
           )}
         </section>
       </div>
+    </>
+  );
+}
+
+export function AvailableProjects() {
+  const { state } = useApp();
+  const employee = state.employees.find(
+    (item) => item.id === state.selectedEmployeeId,
+  );
+  if (!employee)
+    return (
+      <PageHead
+        title="Available projects"
+        sub="Projects are unavailable until your employee profile is linked."
+      />
+    );
+
+  const work = workload(state, employee);
+  const assignments = state.assignments.filter(
+    (assignment) =>
+      assignment.employeeId === employee.id && assignment.status === "Active",
+  );
+  const assignedProjectIds = new Set(
+    assignments.map((assignment) => assignment.projectId),
+  );
+  const eligibleProjectIds = new Set(
+    state.projects
+      .filter((project) => {
+        if (
+          assignedProjectIds.has(project.id) ||
+          project.status === "Completed" ||
+          employee.status !== "Active" ||
+          employee.explicitAvailability === "Unavailable" ||
+          work.remaining < Number(project.commitment || 25)
+        )
+          return false;
+        const match = matchSkills(
+          project.requiredSkills ?? [],
+          employee.skills,
+        );
+        return !match.missing.length && !match.below.length;
+      })
+      .map((project) => project.id),
+  );
+
+  return (
+    <>
+      <PageHead
+        title="Available projects"
+        sub={`${state.projects.length} projects · ${state.projects.filter((project) => project.status === "Active").length} active`}
+      />
+      <section className="panel directory-panel available-projects-section">
+        <div className="panel-head available-projects-head">
+          <p>
+            Eligibility reflects skill match and available capacity; assigned
+            projects are shown separately.
+          </p>
+          <div
+            className="project-status-legend"
+            aria-label="Project status legend"
+          >
+            <span>
+              <i className="assigned-swatch" /> Assigned
+            </span>
+            <span>
+              <i className="eligible-swatch" /> Eligible
+            </span>
+            <span>
+              <i className="not-eligible-swatch" /> Not eligible
+            </span>
+          </div>
+        </div>
+        {state.projects.length ? (
+          <div className="project-grid employee-project-grid">
+            {state.projects.map((project) => {
+              const assigned = assignedProjectIds.has(project.id);
+              const eligible = eligibleProjectIds.has(project.id);
+              const assignedCount = state.assignments.filter(
+                (assignment) =>
+                  assignment.projectId === project.id &&
+                  assignment.status === "Active",
+              ).length;
+              const teamSize = Number(project.teamSize) || 1;
+              const staffing = Math.min(
+                100,
+                Math.round((assignedCount / teamSize) * 100),
+              );
+              const status = assigned
+                ? "Assigned to you"
+                : eligible
+                  ? "Eligible"
+                  : "Not eligible";
+              return (
+                <article
+                  className={`project-card employee-project ${assigned ? "assigned" : eligible ? "eligible" : "unavailable"}`}
+                  key={project.id}
+                >
+                  <div className="project-title">
+                    <div className="project-symbol">
+                      <BriefcaseBusiness size={18} />
+                    </div>
+                    <Badge
+                      tone={
+                        assigned
+                          ? "assigned"
+                          : eligible
+                            ? "eligible"
+                            : "unavailable"
+                      }
+                    >
+                      {status}
+                    </Badge>
+                  </div>
+                  <div className="project-name">{project.name}</div>
+                  <p>{project.description || project.client}</p>
+                  <div className="badge-row employee-project-badges">
+                    <Badge>{project.status}</Badge>
+                    <Badge
+                      tone={
+                        project.priority === "Critical" ||
+                        project.priority === "High"
+                          ? "priority-high"
+                          : "priority-normal"
+                      }
+                    >
+                      {project.priority} priority
+                    </Badge>
+                  </div>
+                  <div className="project-staff">
+                    <div>
+                      <b>Team staffing</b>
+                      <span>
+                        {assignedCount} / {project.teamSize}
+                      </span>
+                    </div>
+                    <div className="bar">
+                      <span style={{ width: `${staffing}%` }} />
+                    </div>
+                    <small>
+                      {assignedCount < teamSize
+                        ? `${teamSize - assignedCount} open position${teamSize - assignedCount === 1 ? "" : "s"}`
+                        : "Target team size reached"}
+                    </small>
+                  </div>
+                  {(project.requiredSkills ?? []).length > 0 && (
+                    <div className="project-required-skills">
+                      {project.requiredSkills.map((skill) => (
+                        <span key={skill.name}>
+                          {skill.name} · {skill.level}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <div className="project-foot">
+                    <span>{project.client}</span>
+                    <span>Due {fmtDate(project.deadline)}</span>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <Empty title="No projects available" />
+        )}
+      </section>
     </>
   );
 }

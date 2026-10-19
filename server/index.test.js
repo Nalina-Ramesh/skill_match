@@ -206,7 +206,10 @@ describe("authentication and workspace API", () => {
       role: "Employee",
       selectedEmployeeId: "employee-1",
       employees: [{ id: "employee-1" }],
-      projects: [{ id: "project-1" }],
+      projects: [
+        { id: "project-1", name: "Assigned project" },
+        { id: "project-2", name: "Other project" },
+      ],
       assignments: [{ employeeId: "employee-1" }],
       history: [{ employeeId: "employee-1" }],
     });
@@ -241,6 +244,45 @@ describe("authentication and workspace API", () => {
     });
     expect(employeeSave.response.status).toBe(200);
 
+    const certificateBytes = Buffer.from("%PDF-1.4\ncertificate data");
+    const certificateUpload = await fetch(
+      `${baseUrl}/api/employees/employee-1/certificates`,
+      {
+        method: "POST",
+        headers: {
+          cookie: employeeSignup.cookie,
+          "content-type": "application/octet-stream",
+          "x-certificate-name": "JavaScript certificate.pdf",
+          "x-certificate-type": "application/pdf",
+          "x-certificate-skill": "TypeScript",
+        },
+        body: certificateBytes,
+      },
+    );
+    expect(certificateUpload.status).toBe(201);
+    const { certificate } = await certificateUpload.json();
+
+    const employeeDownload = await fetch(
+      `${baseUrl}/api/employees/employee-1/certificates/${certificate.id}`,
+      { headers: { cookie: employeeSignup.cookie } },
+    );
+    expect(employeeDownload.status).toBe(200);
+    expect(Buffer.from(await employeeDownload.arrayBuffer())).toEqual(
+      certificateBytes,
+    );
+
+    const otherEmployeeDownload = await fetch(
+      `${baseUrl}/api/employees/employee-2/certificates/${certificate.id}`,
+      { headers: { cookie: employeeSignup.cookie } },
+    );
+    expect(otherEmployeeDownload.status).toBe(404);
+
+    const managerDownload = await fetch(
+      `${baseUrl}/api/employees/employee-1/certificates/${certificate.id}`,
+      { headers: { cookie: managerSignup.cookie } },
+    );
+    expect(managerDownload.status).toBe(200);
+
     const managerRead = await request("/api/workspace", {
       cookie: managerSignup.cookie,
     });
@@ -249,6 +291,7 @@ describe("authentication and workspace API", () => {
         id: "employee-1",
         name: "Taylor Employee",
         skills: [{ name: "TypeScript", level: "Advanced" }],
+        certificates: [certificate],
       },
       { id: "employee-2", name: "Other Employee", skills: [] },
     ]);

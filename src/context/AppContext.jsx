@@ -120,7 +120,13 @@ export function AppProvider({ children }) {
   const signUp = async (name, email, password, accountRole, managerEmail) => {
     const result = await api("/auth/signup", {
       method: "POST",
-      body: JSON.stringify({ name, email, password, accountRole, managerEmail }),
+      body: JSON.stringify({
+        name,
+        email,
+        password,
+        accountRole,
+        managerEmail,
+      }),
     });
     acceptSession(result);
   };
@@ -144,6 +150,35 @@ export function AppProvider({ children }) {
     setUser(null);
     setState(emptyState());
     setWorkspaceReady(false);
+  };
+
+  const uploadCertificate = async (employeeId, file, skill) => {
+    const { certificate } = await api(
+      `/employees/${encodeURIComponent(employeeId)}/certificates`,
+      {
+        method: "POST",
+        body: file,
+        headers: {
+          "Content-Type": "application/octet-stream",
+          "X-Certificate-Name": file.name,
+          "X-Certificate-Type": file.type,
+          "X-Certificate-Skill": skill,
+        },
+      },
+    );
+    setState((current) => ({
+      ...current,
+      employees: current.employees.map((employee) =>
+        employee.id === employeeId
+          ? {
+              ...employee,
+              certificates: [...(employee.certificates ?? []), certificate],
+            }
+          : employee,
+      ),
+    }));
+    notify("Certificate uploaded");
+    return certificate;
   };
 
   const event = (description, employeeId, projectId, type = "management") => ({
@@ -417,6 +452,7 @@ export function AppProvider({ children }) {
       signUp,
       signIn,
       signOut,
+      uploadCertificate,
       addEmployee,
       updateEmployee,
       deleteEmployee,

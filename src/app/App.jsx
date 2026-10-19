@@ -28,6 +28,7 @@ import {
   Projects,
   ProjectDetail,
   Assignments,
+  AvailableProjects,
   Reports,
   Workspace,
   NotFound,
@@ -47,6 +48,14 @@ function ManagerRoute({ children }) {
     <Navigate to="/my-workspace" replace />
   );
 }
+function EmployeeRoute({ children }) {
+  const { state } = useApp();
+  return state.role === "Employee" ? (
+    children
+  ) : (
+    <Navigate to="/projects" replace />
+  );
+}
 export default function App() {
   const { state, toast, user, authLoading, signOut, notify } = useApp(),
     [collapsed, setCollapsed] = useState(false),
@@ -56,7 +65,10 @@ export default function App() {
   const visibleLinks =
     state.role === "Manager"
       ? links
-      : [["/my-workspace", "My workspace", Users]];
+      : [
+          ["/my-workspace", "My workspace", Users],
+          ["/available-projects", "Available projects", BriefcaseBusiness],
+        ];
   if (authLoading) {
     return <div className="auth-loading">Opening your workspace…</div>;
   }
@@ -85,6 +97,7 @@ export default function App() {
     "/assignments": "Assignments",
     "/reports": "Reports",
     "/my-workspace": "My workspace",
+    "/available-projects": "Available projects",
   };
   let title =
     titles[loc.pathname] ||
@@ -178,14 +191,8 @@ export default function App() {
         </header>
         <main>
           <Routes>
-            <Route
-              path="/login"
-              element={<Navigate to="/" replace />}
-            />
-            <Route
-              path="/signup"
-              element={<Navigate to="/" replace />}
-            />
+            <Route path="/login" element={<Navigate to="/" replace />} />
+            <Route path="/signup" element={<Navigate to="/" replace />} />
             <Route
               path="/"
               element={
@@ -254,6 +261,14 @@ export default function App() {
               }
             />
             <Route path="/my-workspace" element={<Workspace />} />
+            <Route
+              path="/available-projects"
+              element={
+                <EmployeeRoute>
+                  <AvailableProjects />
+                </EmployeeRoute>
+              }
+            />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </main>

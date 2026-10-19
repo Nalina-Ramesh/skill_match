@@ -1290,6 +1290,178 @@ td small {
 .workspace-grid {
   margin-top: 14px;
 }
+.skill-quick-edit {
+  display: grid;
+  gap: 12px;
+}
+.skill-quick-edit .skill-add-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 140px auto;
+  align-items: center;
+  gap: 8px;
+}
+.skill-edit-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px auto;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-top: 1px solid #edf0f4;
+}
+.skill-edit-row > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #35465c;
+  font-size: 12px;
+  font-weight: 600;
+}
+.skill-edit-row > select {
+  width: 100%;
+  min-width: 0;
+}
+.skill-edit-row .danger-text {
+  justify-self: end;
+  padding: 6px 8px;
+  font-size: 10px;
+}
+.available-projects-section {
+  margin-top: 16px;
+}
+.available-projects-head {
+  margin: 0;
+  padding: 18px 18px 0;
+}
+.employee-project {
+  min-width: 0;
+}
+.employee-project.assigned {
+  border-left: 5px solid #187344;
+  background: #effaf2;
+}
+.employee-project.eligible {
+  border-left: 5px solid #c86b13;
+  background: #fff6e8;
+}
+.employee-project.unavailable {
+  border-left: 5px solid #b42318;
+  background: #fff1f0;
+}
+.employee-project-badges {
+  min-height: 22px;
+}
+.project-status-legend {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  color: #64748b;
+  font-size: 10px;
+  white-space: nowrap;
+}
+.project-status-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.project-status-legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+.assigned-swatch {
+  background: #187344;
+}
+.eligible-swatch {
+  background: #c86b13;
+}
+.not-eligible-swatch {
+  background: #b42318;
+}
+.project-required-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 10px;
+}
+.project-required-skills span {
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: #fff;
+  color: #607087;
+  font-size: 9px;
+}
+.badge.assigned {
+  background: #d8f0df;
+  color: #145c35;
+}
+.badge.eligible {
+  background: #ffe4b8;
+  color: #79400d;
+}
+.badge.unavailable {
+  background: #fee4e2;
+  color: #912018;
+}
+.certificate-upload {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.certificate-upload input {
+  min-width: 0;
+  flex: 1;
+  color: #667487;
+  font-size: 10px;
+}
+.certificate-upload input::file-selector-button {
+  margin-right: 8px;
+  padding: 7px 9px;
+  border: 1px solid #dce3ea;
+  border-radius: 5px;
+  background: #fff;
+  color: #43556b;
+  cursor: pointer;
+}
+.certificate-list {
+  display: grid;
+  gap: 7px;
+}
+.certificate-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-top: 1px solid #edf0f4;
+  color: #315b91;
+  font-size: 10px;
+}
+.certificate-row span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.certificate-row span small {
+  display: block;
+  margin-top: 2px;
+}
+.certificate-row small {
+  color: #8a97a8;
+  font-size: 9px;
+}
+.certificate-upload select {
+  min-width: 120px;
+  max-width: 180px;
+}
+.certificate-hint {
+  margin: -6px 0 12px;
+  color: #8793a2;
+  font-size: 10px;
+}
 .not-found {
   text-align: center;
   max-width: 480px;
@@ -1700,6 +1872,23 @@ td small {
   .profile-grid {
     gap: 10px;
   }
+  .workspace-grid > .panel:not(.profile-intro) {
+    grid-column: 1 / -1;
+  }
+  .skill-quick-edit .skill-add-form {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .skill-quick-edit .skill-add-form > input {
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+  .skill-quick-edit .skill-add-form > select {
+    min-width: 115px;
+  }
+  .skill-edit-row {
+    grid-template-columns: minmax(0, 1fr) 130px auto;
+    gap: 8px;
+  }
   .profile-grid > .stat-card {
     min-height: 138px;
   }
@@ -1794,6 +1983,9 @@ td small {
   .project-grid {
     grid-template-columns: 1fr;
     padding: 11px;
+  }
+  .employee-project-grid {
+    grid-template-columns: 1fr;
   }
   .profile-grid {
     grid-template-columns: 1fr;
