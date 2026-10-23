@@ -1,10 +1,4 @@
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import {
   id,
   workload,
@@ -46,7 +40,9 @@ async function api(path, options = {}) {
 function discardLegacyWorkspace() {
   try {
     localStorage.removeItem("skillmatch-data-v1");
-  } catch {}
+  } catch (error) {
+    console.warn("Unable to remove legacy workspace data.", error);
+  }
 }
 
 export function AppProvider({ children }) {
@@ -441,30 +437,27 @@ export function AppProvider({ children }) {
     notify("Workspace data cleared");
   };
 
-  const value = useMemo(
-    () => ({
-      state,
-      setState,
-      toast,
-      notify,
-      user,
-      authLoading,
-      signUp,
-      signIn,
-      signOut,
-      uploadCertificate,
-      addEmployee,
-      updateEmployee,
-      deleteEmployee,
-      addProject,
-      updateProject,
-      deleteProject,
-      assign,
-      unassign,
-      reset,
-    }),
-    [state, toast, user, authLoading],
-  );
+  const value = {
+    state,
+    setState,
+    toast,
+    notify,
+    user,
+    authLoading,
+    signUp,
+    signIn,
+    signOut,
+    uploadCertificate,
+    addEmployee,
+    updateEmployee,
+    deleteEmployee,
+    addProject,
+    updateProject,
+    deleteProject,
+    assign,
+    unassign,
+    reset,
+  };
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

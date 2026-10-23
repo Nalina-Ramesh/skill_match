@@ -9,7 +9,7 @@ npm install
 npm run dev
 ```
 
-The development command starts the Vite frontend and Express API together. Create a production bundle with `npm run build`, then run the combined app with `npm start`. Run backend integration tests with `npx vitest run server/index.test.js --pool forks --maxWorkers 1`. Format the project with `npm run format` and verify formatting with `npm run format:check`.
+The development command starts the Vite frontend and Express API together. Create a production bundle with `npm run build`, then run the combined app with `npm start`. Run all unit and backend integration tests with `npm test`, check JavaScript and React code with `npm run lint`, and verify formatting with `npm run format:check`. GitHub Actions runs the tests, lint, formatting check, and production build for pushes and pull requests.
 
 ## Features
 

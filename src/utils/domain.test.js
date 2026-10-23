@@ -1,4 +1,4 @@
-/*import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   csv,
   matchSkills,
@@ -154,4 +154,4 @@ describe("workload and recommendations", () => {
       ]),
     ).toBe('"a","b"\r\n"\'=1+1","say ""hi"", ok"');
   });
-});*/
+});

@@ -9,9 +9,10 @@
     "vite:dev": "vite",
     "start": "node server/index.js",
     "build": "vite build",
-    "format": "prettier --write index.html README.md package.json package-lock.json vite.config.js src server",
-    "format:check": "prettier --check index.html README.md package.json package-lock.json vite.config.js src server",
-    "test": "vitest run server/index.test.js --pool forks --maxWorkers 1"
+    "format": "prettier --write index.html README.md package.json package-lock.json vite.config.js eslint.config.js src server .github",
+    "format:check": "prettier --check index.html README.md package.json package-lock.json vite.config.js eslint.config.js src server .github",
+    "lint": "eslint . --max-warnings 0",
+    "test": "vitest run --pool forks --maxWorkers 1"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
@@ -24,7 +25,12 @@
     "vite": "latest"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "concurrently": "^10.0.6",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.13.0",
     "prettier": "^3.9.9",
     "vitest": "latest"
   }

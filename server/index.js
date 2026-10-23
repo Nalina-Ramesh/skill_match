@@ -458,7 +458,7 @@ export function createApp({
         const skill = String(request.get("x-certificate-skill") ?? "").trim();
         const name = path
           .basename(originalName.replaceAll("\\", "/"))
-          .replace(/[\u0000-\u001f\u007f]/g, "")
+          .replace(/[\u0000-\u001f\u007f]/g, "") // eslint-disable-line no-control-regex -- strip control chars from uploaded filenames
           .trim();
         if (
           !validFile ||
