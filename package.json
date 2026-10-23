@@ -9,8 +9,8 @@
     "vite:dev": "vite",
     "start": "node server/index.js",
     "build": "vite build",
-    "format": "prettier --write index.html README.md package.json package-lock.json vite.config.js eslint.config.js src server .github",
-    "format:check": "prettier --check index.html README.md package.json package-lock.json vite.config.js eslint.config.js src server .github",
+    "format": "prettier --write index.html README.md VERIFICATION.md package.json package-lock.json vite.config.js eslint.config.js src server .github",
+    "format:check": "prettier --check index.html README.md VERIFICATION.md package.json package-lock.json vite.config.js eslint.config.js src server .github",
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run --pool forks --maxWorkers 1"
   },
